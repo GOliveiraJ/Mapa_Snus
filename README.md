@@ -1,5 +1,3 @@
-# Mapa_Snus
-
 # 🌍 Painel de Inteligência Regulatória Global
 
 Um *dashboard* interativo e estático desenvolvido para mapear e visualizar o status legal de produtos de nicotina (Snus, Sachês de Nicotina/Pouches e Vapes) em diversos países. 
