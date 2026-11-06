@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Inteligência Regulatória Global</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    
+    <style>
+        :root {
+            --bg-color: #f1f5f9;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --primary: #0f172a;
+            --accent: #3b82f6;
+            --white: #ffffff;
+            --border: #e2e8f0;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            
+            /* Paleta de Cores de Status (6 Categorias) */
+            --c-regulado: #10b981;  /* 1: Verde */
+            --c-proibido: #ef4444;  /* 2: Vermelho */
+            --c-lacuna: #f59e0b;    /* 3: Laranja/Âmbar */
+            --c-restrito: #8b5cf6;  /* 4: Roxo */
+            --c-medicinal: #3b82f6; /* 5: Azul */
+            --c-projeto: #ec4899;   /* 6: Rosa */
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* HEADER PROFISSIONAL */
+        header {
+            background-color: var(--white);
+            color: var(--primary);
+            padding: 15px 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+            z-index: 10;
+        }
+
+        .header-title { display: flex; flex-direction: column; }
+        header h1 { margin: 0; font-size: 1.4rem; font-weight: 700; letter-spacing: -0.5px; }
+        .subtitle { font-size: 0.85rem; color: var(--text-muted); font-weight: 500; margin-top: 2px; }
+
+        .dashboard-layout {
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 65px);
+        }
+
+        /* ÁREA ESQUERDA: MAPA E KPIs */
+        .map-section {
+            flex: 2;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 15px;
+        }
+
+        /* CONTROLES SUPERIORES (Modos e Zoom) */
+        .top-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .mode-toggles { display: flex; gap: 10px; background: var(--white); padding: 5px; border-radius: 10px; border: 1px solid var(--border); }
+        .mode-btn {
+            background: transparent; border: none; color: var(--text-muted); padding: 10px 20px;
+            border-radius: 6px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+        }
+        .mode-btn:hover { color: var(--primary); }
+        .mode-btn.active { background: var(--bg-color); color: var(--primary); box-shadow: var(--shadow-sm); }
+
+        .map-controls { display: flex; gap: 6px; }
+        .zoom-btn {
+            background-color: var(--white); border: 1px solid var(--border); color: var(--text-muted);
+            padding: 8px 14px; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer; transition: all 0.2s;
+        }
+        .zoom-btn:hover { border-color: #cbd5e1; background: #f8fafc; color: var(--primary); }
+        .zoom-btn.active { background-color: var(--primary); color: var(--white); border-color: var(--primary); }
+
+        /* KPI CARDS */
+        .kpi-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+        }
+        .kpi-card {
+            background: var(--white); border-radius: 8px; padding: 12px; border: 1px solid var(--border);
+            display: flex; flex-direction: column; gap: 2px; box-shadow: var(--shadow-sm);
+            border-top: 4px solid transparent;
+        }
+        .kpi-title { font-size: 0.65rem; text-transform: uppercase; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px;}
+        .kpi-value { font-size: 1.6rem; font-weight: 700; color: var(--primary); }
+        
+        .kpi-1 { border-top-color: var(--c-regulado); }
+        .kpi-2 { border-top-color: var(--c-proibido); }
+        .kpi-3 { border-top-color: var(--c-lacuna); }
+        .kpi-4 { border-top-color: var(--c-restrito); }
+        .kpi-5 { border-top-color: var(--c-medicinal); }
+        .kpi-6 { border-top-color: var(--c-projeto); }
+
+        /* MAPA */
+        .map-container {
+            flex: 1; position: relative; border-radius: 12px; overflow: hidden;
+            box-shadow: var(--shadow-md); background: #e0f2fe; border: 1px solid var(--border);
+        }
+        #regions_div { width: 100%; height: 100%; }
+
+        div.google-visualization-tooltip {
+            border: none !important; border-radius: 8px !important; box-shadow: var(--shadow-lg) !important;
+            background-color: var(--white) !important; padding: 0 !important; pointer-events: none;
+        }
+
+        /* PAINEL LATERAL (DIREITA) */
+        .info-panel {
+            flex: 1; min-width: 420px; max-width: 450px; background-color: var(--white);
+            border-left: 1px solid var(--border); display: flex; flex-direction: column;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.02);
+        }
+
+        /* BARRA DE BUSCA */
+        .search-box {
+            padding: 20px; border-bottom: 1px solid var(--border); background: #f8fafc;
+        }
+        .search-box label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); margin-bottom: 8px; }
+        .search-select {
+            width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #cbd5e1;
+            font-size: 1rem; font-family: 'Inter', sans-serif; color: var(--primary); outline: none;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;
+        }
+        .search-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
+
+        /* CONTEÚDO DO PAINEL */
+        .panel-content { padding: 25px; overflow-y: auto; flex: 1; }
+
+        .placeholder { text-align: center; margin: auto; color: var(--text-muted); margin-top: 50px; }
+        .placeholder svg { width: 50px; height: 50px; fill: #cbd5e1; margin-bottom: 15px; }
+
+        #country-details { display: none; animation: fadeIn 0.3s ease-out; }
+
+        .country-header { display: flex; align-items: center; margin-bottom: 25px; }
+        .flag-img {
+            width: 56px; height: 38px; object-fit: cover; border-radius: 4px;
+            box-shadow: var(--shadow-sm); margin-right: 15px; border: 1px solid #e2e8f0;
+        }
+        .country-name { margin: 0; font-size: 1.5rem; color: var(--primary); font-weight: 700; }
+
+        .data-section {
+            margin-bottom: 15px; background: #f8fafc; padding: 16px; border-radius: 8px;
+            border: 1px solid var(--border); border-left: 4px solid var(--text-muted);
+        }
+        .data-section.sec-sach { border-left-color: var(--accent); }
+        .data-section.sec-snus { border-left-color: #8b5cf6; }
+        .data-section.sec-vape { border-left-color: #10b981; }
+
+        .data-section h3 { margin: 0 0 10px 0; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.5px; }
+        .data-value { font-size: 1rem; font-weight: 600; margin-bottom: 6px; color: var(--primary); }
+        .data-extra { font-size: 0.9rem; color: #475569; line-height: 1.5; border-top: 1px dashed #cbd5e1; padding-top: 8px; margin-top: 8px; }
+        
+        .extra-info-box { background: #fffbeb; border-left-color: #f59e0b; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title">
+            <h1>Inteligência Regulatória Global</h1>
+            <div class="subtitle">Snus, Sachês de Nicotina (Pouches) e Dispositivos Eletrônicos (Vapes) 2025</div>
+        </div>
+    </header>
+
+    <div class="dashboard-layout">
+        
+        <div class="map-section">
+            
+            <div class="top-controls">
+                <div class="mode-toggles">
+                    <button id="btn-sach" class="mode-btn active" onclick="setMode('sach')">Análise: Sachês (Pouches)</button>
+                    <button id="btn-snus" class="mode-btn" onclick="setMode('snus')">Análise: Snus Tradicional</button>
+                </div>
+
+                <div class="map-controls">
+                    <button class="zoom-btn active" onclick="changeRegion('world', this)">Mundo</button>
+                    <button class="zoom-btn" onclick="changeRegion('021', this)">Am. Norte</button>
+                    <button class="zoom-btn" onclick="changeRegion('013', this)">Am. Central</button>
+                    <button class="zoom-btn" onclick="changeRegion('005', this)">Am. Sul</button>
+                    <button class="zoom-btn" onclick="changeRegion('150', this)">Europa</button>
+                    <button class="zoom-btn" onclick="changeRegion('142', this)">Ásia</button>
+                    <button class="zoom-btn" onclick="changeRegion('009', this)">Oceania</button>
+                </div>
+            </div>
+
+            <div class="kpi-container">
+                <div class="kpi-card kpi-1"><div class="kpi-title">Regulamentado / Permitido</div><div class="kpi-value" id="kpi-1">0</div></div>
+                <div class="kpi-card kpi-2"><div class="kpi-title">Regulamentado / Proibido</div><div class="kpi-value" id="kpi-2">0</div></div>
+                <div class="kpi-card kpi-3"><div class="kpi-title">Lacuna / Omissão</div><div class="kpi-value" id="kpi-3">0</div></div>
+                <div class="kpi-card kpi-4"><div class="kpi-title">Restrito</div><div class="kpi-value" id="kpi-4">0</div></div>
+                <div class="kpi-card kpi-5"><div class="kpi-title">Medicinal</div><div class="kpi-value" id="kpi-5">0</div></div>
+                <div class="kpi-card kpi-6"><div class="kpi-title">Projeto de Lei</div><div class="kpi-value" id="kpi-6">0</div></div>
+            </div>
+
+            <div class="map-container">
+                <div id="regions_div"></div>
+            </div>
+        </div>
+
+        <div class="info-panel">
+            
+            <div class="search-box">
+                <label for="countrySearch">Busca Rápida por País</label>
+                <select id="countrySearch" class="search-select" onchange="searchCountry()">
+                    <option value="">Selecione um país na lista...</option>
+                </select>
+            </div>
+
+            <div class="panel-content">
+                <div id="placeholder" class="placeholder">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                    <h3>Nenhum País Selecionado</h3>
+                    <p style="font-size: 0.9rem; margin-top: 5px;">Selecione no mapa ou utilize a busca acima para acessar o dossiê regulatório.</p>
+                </div>
+
+                <div id="country-details">
+                    <div class="country-header">
+                        <img id="c-flag" class="flag-img" src="" alt="Bandeira">
+                        <h2 id="c-name" class="country-name">Nome</h2>
+                    </div>
+
+                    <div class="data-section sec-sach">
+                        <h3>Sachês de Nicotina (Pouches)</h3>
+                        <div id="c-sach-status" class="data-value"></div>
+                        <div id="c-sach-obs" class="data-extra"></div>
+                    </div>
+
+                    <div class="data-section sec-snus">
+                        <h3>Snus Tradicional (Tabaco)</h3>
+                        <div id="c-snus-status" class="data-value"></div>
+                        <div id="c-snus-obs" class="data-extra"></div>
+                    </div>
+
+                    <div class="data-section sec-vape">
+                        <h3>Vapes / E-cigs</h3>
+                        <div id="c-vapes-status" class="data-value"></div>
+                        <div id="c-vapes-obs" class="data-extra"></div>
+                    </div>
+
+                    <div class="data-section extra-info-box">
+                        <h3>Contexto Jurídico Adicional</h3>
+                        <div id="c-extra" class="data-value" style="font-size:0.9rem; font-weight:400; line-height: 1.5; color: #334155;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CÓDIGOS DE COR:
+        // 1 = Regulamentado / Permitido (Verde)
+        // 2 = Regulamentado / Proibido (Vermelho)
+        // 3 = Lacuna / Omissão (Laranja)
+        // 4 = Restrito (Roxo)
+        // 5 = Medicinal / Terapêutico (Azul)
+        // 6 = Projeto de Lei / Em Análise (Rosa)
+
+        const db = {
+            // AMÉRICA DO NORTE E CENTRAL
+            "CA": { name: "Canadá", region: 1, sachColor: 4, sachLabel: "Restrito", sachObs: "Considerado Terapia de Reposição. Nova regra exige receita para >4mg.", snusColor: 1, snusLabel: "Regulamentado / Permitido", snusObs: "Venda permitida sob rígidas leis de tabaco.", vapes: "Regulamentado / Permitido", vapesObs: "Máximo 20 mg/mL. Regulados pela TVPA.", extraInfo: "Em julho de 2024, o Health Canada introduziu novas regras focando na proteção de jovens contra novos produtos de nicotina." },
+            "US": { name: "Estados Unidos", region: 1, sachColor: 1, sachLabel: "Regulamentado / Permitido", sachObs: "O FDA autorizou 20 sachês ZYN e avalia individualmente.", snusColor: 1, snusLabel: "Regulamentado / Permitido", snusObs: "8 marcas de Snus ganharam status de 'risco reduzido' pela FDA.", vapes: "Regulamentado / Permitido", vapesObs: "Exigem aprovação PMTA.", extraInfo: "A lei federal americana engloba nicotina sintética desde 2022. Exige avisos sanitários em 30% da embalagem." },
+            "MX": { name: "México", region: 6, sachColor: 3, sachLabel: "Lacuna Regulatória", sachObs: "Invadiram lojas em 2024 sem lei clara.", snusColor: 3, snusLabel: "Lacuna Regulatória", snusObs: "Sem definição clara para tabaco oral sem combustão.", vapes: "Regulamentado / Proibido", vapesObs: "Comércio de qualquer objeto que se assemelhe a tabaco é proibido.", extraInfo: "O Comitê Interinstitucional emitiu posicionamento exigindo a proibição total da expansão destes produtos priorizando a saúde." },
+
+            // AMÉRICA DO SUL
+            "AR": { name: "Argentina", region: 2, sachColor: 3, sachLabel: "Lacuna Regulatória", sachObs: "Nicotina sintética não está na lei do tabaco.", snusColor: 1, snusLabel: "Regulamentado / Permitido", snusObs: "Regulado pela Lei 26.687/2011.", vapes: "Regulamentado / Proibido", vapesObs: "Proibido pela ANMAT.", extraInfo: "A recente 'Ley Ómnibus' propôs um novo imposto de 20%, o que pode indicar uma futura revisão da proibição." },
+            "BO": { name: "Bolívia", region: 2, sachColor: 3, sachLabel: "Lacuna Regulatória", sachObs: "Sem menção na lei local.", snusColor: 1, snusLabel: "Regulamentado / Permitido", snusObs: "Tratado como tabaco comum.", vapes: "Regulamentado / Permitido", vapesObs: "Categorizados pela Lei 1280/2020.", extraInfo: "O Decreto Supremo 5042/2023 ampliou drasticamente as tarifas aduaneiras em 40% para importação." },
+            "CL": { name: "Chile", region: 2, sachColor: 1, sachLabel: "Regulamentado / Permitido", sachObs: "Assimilado às novas leis de tabaco.", snusColor: 1, snusLabel: "Regulamentado / Permitido", snusObs: "Lei 21.642 de 2024 atualizou as regras.", vapes: "Regulamentado / Permitido", vapesObs: "Máximo 45 mg/mL.", extraInfo: "O Chile atualizou profundamente sua legislação em 2024 para abraçar eletrônicos e novos sachês." },
+            "CO": { name: "Colômbia", region: 2, sachColor: 1, sachLabel: "Regulamentado / Permitido", sachObs: "Regulados como PNO (Produtos Orais de Nicotina).", snusColor: 1, snusLabel: "Regulamentado / Permitido", snusObs: "Enquadrado na lei de PNOs.", vapes: "Regulamentado / Permitido", vapesObs: "Sujeitos a rótulos neutros.", extraInfo: "A regulação abrange substitutos e imitadores do cigarro, impondo as mesmas restrições de marketing do tabaco tradicional." },
+            "EC": { name: "Equador", region: 2, sachColor: 3, sachLabel: "Lacuna Regulatória", sachObs: "Sem definição clara.", snusColor: 1, snusLabel: "Regulamentado / Permitido", snusObs: "Regra geral de tabaco.", vapes: "Regulamentado / Permitido", vapesObs: "Indireto na lei.", extraInfo: "Forte lacuna técnica para nicotina isolada." },
+            "GY": { name: "Guiana", region: 2, sachColor: 3, sachLabel: "Lacuna Regulatória", sachObs: "Omissão atual.", snusColor: 1, snusLabel: "Regulamentado / Permitido", snusObs: "Regra geral.", vapes: "Regulamentado / Permitido", vapesObs: "Com restrições de idade.", extraInfo: "Projeto de lei em tramitação para 2025 focado em inovações do tabaco." },
+            "PY": { name: "Paraguai", region: 2, sachColor: 6, sachLabel: "Projeto de Lei", sachObs: "Projeto (2024) para registro junto à DINAVISA.", snusColor: 1, snusLabel: "Regulamentado / Permitido", snusObs: "Tabaco comum.", vapes: "Regulamentado / Permitido", vapesObs: "Máximo 20 mg/mL.", extraInfo: "Há um movimento regulatório ativo para formalizar as 'bolsas de nicotina' sintética." },
+            "PE": { name: "Peru", region: 2, sachColor: 6, sachLabel: "Projeto de Lei", sachObs: "Lei 32159/2024 aprovada, aguarda portaria técnica.", snusColor: 6, snusLabel: "Projeto de Lei", snusObs: "Mesma lei dos sachês.", vapes: "Regulamentado / Permitido", vapesObs: "Aguardando detalhes técnicos.", extraInfo: "A Resolução Ministerial 307 (Fev/2025) criou um grupo técnico exclusivo para elaborar o regulamento detalhado." },
+            "SR": { name: "Suriname", region: 2, sachColor: 2, sachLabel: "Regulamentado / Proibido", sachObs: "Lei proíbe imitações.", snusColor: 2, snusLabel: "Regulamentado / Proibido", snusObs: "Abarcado na lei de imitações.", vapes: "Regulamentado / Proibido", vapesObs: "Totalmente banidos.", extraInfo: "Políticas estritas da CARICOM contra novos produtos." },
+            "UY": { name: "Uruguai", region: 2, sachColor: 3, sachLabel: "Lacuna Regulatória", sachObs: "Sem lei explícita para nicotina oral não-tabaco.", snusColor: 1, snusLabel: "Regulamentado / Permitido", snusObs: "Regras de tabaco (altamente taxado).", vapes: "Regulamentado / Proibido", vapesObs: "Decreto 125/2025 proibiu tudo.", extraInfo: "O Decreto de Junho de 2025 revogou exceções anteriores e restabeleceu a proibição total de eletrônicos." },
+            "VE": { name: "Venezuela", region: 2, sachColor: 3, sachLabel: "Lacuna Regulatória", sachObs: "Omissão.", snusColor: 1, snusLabel: "Regulamentado / Permitido", snusObs: "Combate ao comércio ilícito.", vapes: "Regulamentado / Proibido", vapesObs: "Resolução 414/2023.", extraInfo: "Foco governamental atual é apenas em conter vapes e contrabando de cigarros." },
+
+            // ÁSIA
+            "CN": { name: "China", region: 4, sachColor: 3, sachLabel: "Lacuna Regulatória", sachObs: "Relatórios apontam controles futuros iminentes.", snusColor: 4, snusLabel: "Restrito", snusObs: "Sob controle exclusivo do Estado chinês (Monopólio).", vapes: "Regulamentado / Permitido", vapesObs: "Controlados pelo Estado. Máx 20 mg/g.", extraInfo: "A venda online de qualquer produto de nicotina é estritamente proibida pelo monopólio." },
+            "KR": { name: "Coreia do Sul", region: 4, sachColor: 6, sachLabel: "Projeto de Lei", sachObs: "Minuta de 2023 propõe regras rígidas.", snusColor: 1, snusLabel: "Regulamentado / Permitido", snusObs: "Tabaco tradicional.", vapes: "Regulamentado / Permitido", vapesObs: "Obrigação de rotulagem exata.", extraInfo: "Equipara vapes ao tabaco com base em componentes líquidos." },
+            "IN": { name: "Índia", region: 4, sachColor: 2, sachLabel: "Regulamentado / Proibido", sachObs: "Nicotina proibida em produtos orais desde 2011.", snusColor: 2, snusLabel: "Regulamentado / Proibido", snusObs: "Proibição oral severa.", vapes: "Regulamentado / Proibido", vapesObs: "Lei PECA 2019.", extraInfo: "A importação, venda e fabricação de qualquer alternativa ao cigarro dá cadeia." },
+            "JP": { name: "Japão", region: 4, sachColor: 5, sachLabel: "Medicinal", sachObs: "Requer aprovação farmacêutica.", snusColor: 1, snusLabel: "Regulamentado / Permitido", snusObs: "Leis brandas para tabaco.", vapes: "Medicinal", vapesObs: "Venda comercial proibida.", extraInfo: "Turistas podem importar vapes/sachês para uso estritamente pessoal (limite de 1 mês)." },
+            "TR": { name: "Turquia", region: 4, sachColor: 2, sachLabel: "Regulamentado / Proibido", sachObs: "Decreto de 2020 bloqueia entrada.", snusColor: 2, snusLabel: "Regulamentado / Proibido", snusObs: "Bloqueio na alfândega.", vapes: "Regulamentado / Proibido", vapesObs: "Fabricação local ilegal.", extraInfo: "Pequenas cotas são permitidas exclusivamente nas malas de turistas." },
+
+            // EUROPA (Países da base original + Exceções)
+            "NO": { name: "Noruega", region: 3, sachColor: 4, sachLabel: "Restrito", sachObs: "Diretoria de Saúde analisa cada marca.", snusColor: 1, snusLabel: "Regulamentado / Permitido", snusObs: "Altamente popular e legal.", vapes: "Aguardando (2025)", vapesObs: "Serão legalizados pelo EEE.", extraInfo: "Apesar de estar fora da UE, adota as diretrizes do Espaço Econômico Europeu." },
+            "SE": { name: "Suécia", region: 3, sachColor: 1, sachLabel: "Regulamentado / Permitido", sachObs: "Tratados como produtos alimentícios.", snusColor: 1, snusLabel: "Regulamentado / Permitido", snusObs: "Meca global do Snus.", vapes: "Regulamentado / Permitido", vapesObs: "Lei 2018:2088.", extraInfo: "Único país da UE com isenção total para a venda de Snus e Sachês, sob regras sanitárias rígidas." },
+            "GB": { name: "Reino Unido", region: 3, sachColor: 6, sachLabel: "Projeto de Lei", sachObs: "Projeto de 2025 restringirá severamente.", snusColor: 2, snusLabel: "Regulamentado / Proibido", snusObs: "Proibido pela Diretriz do Tabaco de 1992 (Diretriz 92/41/CEE) herdada da UE.", vapes: "Regulamentado / Permitido", vapesObs: "Máx 20 mg/mL.", extraInfo: "O 'Tobacco and Vapes Bill' (2025) propõe criar uma geração livre de fumo, proibindo a venda vitalícia para nascidos pós-2009." },
+
+            // EUROPA (Mapeada sob a Diretriz 92/41/CEE)
+            "BE": { name: "Bélgica", region: 3, sachColor: 2, sachLabel: "Regulamentado / Proibido", sachObs: "Adoção local de proibição máxima para sachês.", snusColor: 2, snusLabel: "Regulamentado / Proibido", snusObs: "Proibido pela Diretriz do Tabaco de 1992 (Diretriz 92/41/CEE).", vapes: "Regulamentado / Permitido", vapesObs: "Descartáveis banidos em 2024.", extraInfo: "Lidera restrições na Europa contra produtos descartáveis e novas bolsas de nicotina." },
+            "ES": { name: "Espanha", region: 3, sachColor: 6, sachLabel: "Projeto de Lei", sachObs: "Decreto em consulta para regularização.", snusColor: 2, snusLabel: "Regulamentado / Proibido", snusObs: "Proibido pela Diretriz do Tabaco de 1992 (Diretriz 92/41/CEE).", vapes: "Regulamentado / Permitido", vapesObs: "Máx 20 mg/mL.", extraInfo: "Espanha quer exigir embalagem de sachês 100% à prova de crianças." },
+            "FI": { name: "Finlândia", region: 3, sachColor: 1, sachLabel: "Regulamentado / Permitido", sachObs: "Máximo 16,6 mg/g. Apenas sabores menta.", snusColor: 2, snusLabel: "Regulamentado / Proibido", snusObs: "Proibido pela Diretriz do Tabaco de 1992 (Diretriz 92/41/CEE).", vapes: "Regulamentado / Permitido", vapesObs: "Regras da UE.", extraInfo: "Leis draconianas anti-sabores para impedir o acesso infantil." },
+            "FR": { name: "França", region: 3, sachColor: 2, sachLabel: "Regulamentado / Proibido", sachObs: "Notificação à UE para banimento total.", snusColor: 2, snusLabel: "Regulamentado / Proibido", snusObs: "Proibido pela Diretriz do Tabaco de 1992 (Diretriz 92/41/CEE).", vapes: "Regulamentado / Permitido", vapesObs: "Puffs proibidos Fev/2025.", extraInfo: "Notificação 2025/0110/FR propõe o banimento total das bolsas de nicotina no país." },
+            "NL": { name: "Holanda", region: 3, sachColor: 2, sachLabel: "Regulamentado / Proibido", sachObs: "Lei de Janeiro de 2025 bloqueou vendas.", snusColor: 2, snusLabel: "Regulamentado / Proibido", snusObs: "Proibido pela Diretriz do Tabaco de 1992 (Diretriz 92/41/CEE).", vapes: "Regulamentado / Permitido", vapesObs: "Displays proibidos em lojas.", extraInfo: "Atualização recente da lei de tabaco removeu todas as brechas para sachês sintéticos." },
+            "IT": { name: "Itália", region: 3, sachColor: 1, sachLabel: "Regulamentado / Permitido", sachObs: "Aprovação legal via ADM.", snusColor: 2, snusLabel: "Regulamentado / Proibido", snusObs: "Proibido pela Diretriz do Tabaco de 1992 (Diretriz 92/41/CEE).", vapes: "Regulamentado / Permitido", vapesObs: "Mercado taxado.", extraInfo: "Venda legal de sachês mediante aprovação de monopólios aduaneiros (ADM)." }
+        };
+
+        // APENAS OS PAÍSES MEMBROS DA UNIÃO EUROPEIA PARA FECHAR O MAPA
+        const euCountriesOnly = {
+            "AT": "Áustria", "BG": "Bulgária", "HR": "Croácia", "CY": "Chipre", "CZ": "Chéquia", "DK": "Dinamarca", 
+            "EE": "Estônia", "DE": "Alemanha", "GR": "Grécia", "HU": "Hungria", "IE": "Irlanda", "LV": "Letônia", 
+            "LT": "Lituânia", "LU": "Luxemburgo", "MT": "Malta", "PL": "Polônia", "PT": "Portugal", "RO": "Romênia", 
+            "SK": "Eslováquia", "SI": "Eslovênia"
+        };
+
+        for (let iso in euCountriesOnly) {
+            db[iso] = {
+                name: euCountriesOnly[iso], region: 3,
+                sachColor: 3, sachLabel: "Lacuna Regulatória", sachObs: "Sem política unificada declarada.",
+                snusColor: 2, snusLabel: "Regulamentado / Proibido", snusObs: "A Diretriz do Tabaco de 1992 (Diretriz 92/41/CEE) proíbe expressamente produtos de tabaco para uso oral em todo o bloco.",
+                vapes: "Regulamentado / Permitido", vapesObs: "Regulados pela Diretiva Europeia TPD.",
+                extraInfo: "Como Estado-Membro da União Europeia, este país segue o histórico banimento do Snus estabelecido pela Diretriz 92/41/CEE."
+            };
+        }
+
+        // OCEANIA
+        db["AU"] = { name: "Austrália", region: 5, sachColor: 2, sachLabel: "Regulamentado / Proibido", sachObs: "Venda sem receita dá prisão.", snusColor: 2, snusLabel: "Regulamentado / Proibido", snusObs: "Banimento geral.", vapes: "Apenas Terapêutico", vapesObs: "Só via receita médica.", extraInfo: "Política 'Zero Recreativo'. Qualquer nicotina eletrônica/sintética é crime sem laudo médico." };
+        db["NZ"] = { name: "Nova Zelândia", region: 5, sachColor: 5, sachLabel: "Medicinal", sachObs: "Importação restrita a fins médicos.", snusColor: 1, snusLabel: "Regulamentado / Permitido", snusObs: "Pode importar para uso próprio.", vapes: "Regulamentado / Permitido", vapesObs: "Limites exatos por química.", extraInfo: "Em 2025, separou limites de nicotina base-livre e sais de nicotina em dispositivos." };
+
+
+        let chart, dataTable, chartOptions;
+        let currentMode = 'sach'; 
+
+        function initSearchMenu() {
+            const select = document.getElementById('countrySearch');
+            const sortedCountries = Object.keys(db).sort((a, b) => db[a].name.localeCompare(db[b].name));
+            sortedCountries.forEach(iso => {
+                let opt = document.createElement('option');
+                opt.value = iso;
+                opt.innerHTML = `${db[iso].name}`;
+                select.appendChild(opt);
+            });
+        }
+
+        function searchCountry() {
+            const iso = document.getElementById('countrySearch').value;
+            if(iso) updatePanel(iso);
+        }
+
+        google.charts.load('current', {'packages': ['geochart']});
+        google.charts.setOnLoadCallback(() => {
+            initSearchMenu();
+            initMap();
+        });
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('btn-sach').classList.toggle('active', mode === 'sach');
+            document.getElementById('btn-snus').classList.toggle('active', mode === 'snus');
+            drawRegionsMap();
+        }
+
+        function updateKPIs() {
+            let kpis = { 1:0, 2:0, 3:0, 4:0, 5:0, 6:0 };
+            for(let iso in db) {
+                let code = currentMode === 'sach' ? db[iso].sachColor : db[iso].snusColor;
+                kpis[code]++;
+            }
+            document.getElementById('kpi-1').textContent = kpis[1];
+            document.getElementById('kpi-2').textContent = kpis[2];
+            document.getElementById('kpi-3').textContent = kpis[3];
+            document.getElementById('kpi-4').textContent = kpis[4];
+            document.getElementById('kpi-5').textContent = kpis[5];
+            document.getElementById('kpi-6').textContent = kpis[6];
+        }
+
+        function initMap() {
+            chart = new google.visualization.GeoChart(document.getElementById('regions_div'));
+            
+            google.visualization.events.addListener(chart, 'select', function() {
+                var selection = chart.getSelection();
+                if (selection.length > 0) {
+                    var selectedRow = selection[0].row;
+                    var isoCode = dataTable.getValue(selectedRow, 0);
+                    document.getElementById('countrySearch').value = isoCode;
+                    updatePanel(isoCode);
+                }
+            });
+
+            drawRegionsMap();
+        }
+
+        function drawRegionsMap() {
+            updateKPIs(); 
+            
+            dataTable = new google.visualization.DataTable();
+            dataTable.addColumn('string', 'Country');
+            dataTable.addColumn('number', 'ColorCode');
+            dataTable.addColumn({type: 'string', role: 'tooltip', p: {html: true}});
+
+            for (let iso in db) {
+                let country = db[iso];
+                let colorCode = currentMode === 'sach' ? country.sachColor : country.snusColor;
+                let statusText = currentMode === 'sach' ? country.sachLabel : country.snusLabel;
+                let labelProduto = currentMode === 'sach' ? 'Sachês (Pouches)' : 'Snus (Tabaco)';
+
+                let badgeStyle = '';
+                if(colorCode === 1) badgeStyle = 'background: #d1fae5; color: #059669;';
+                else if(colorCode === 2) badgeStyle = 'background: #fee2e2; color: #dc2626;';
+                else if(colorCode === 3) badgeStyle = 'background: #fef3c7; color: #d97706;';
+                else if(colorCode === 4) badgeStyle = 'background: #f3e8ff; color: #7e22ce;';
+                else if(colorCode === 5) badgeStyle = 'background: #dbeafe; color: #2563eb;';
+                else if(colorCode === 6) badgeStyle = 'background: #fce7f3; color: #db2777;';
+
+                let tooltipHtml = `
+                    <div style="padding: 15px; min-width: 180px; font-family: 'Inter', sans-serif; text-align: center;">
+                        <img src="https://flagcdn.com/w80/${iso.toLowerCase()}.png" style="width: 50px; height: 33px; object-fit: cover; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 8px; border: 1px solid #eee;">
+                        <div style="font-size: 15px; font-weight: 700; color: #0f172a;">${country.name}</div>
+                        <div style="font-size: 10px; color: #64748b; margin-bottom: 8px; text-transform: uppercase; font-weight: 600;">Status: ${labelProduto}</div>
+                        <div style="font-size: 11px; padding: 5px 10px; border-radius: 15px; ${badgeStyle} display: inline-block; margin-bottom: 10px; font-weight: 700;">${statusText}</div>
+                        <div style="font-size: 10px; color: #94a3b8; font-weight: 500;">👆 Clique para detalhes completos</div>
+                    </div>
+                `;
+
+                dataTable.addRow([{v: iso, f: country.name}, colorCode, tooltipHtml]);
+            }
+
+            chartOptions = {
+                backgroundColor: 'transparent',
+                datalessRegionColor: '#f8fafc',
+                defaultColor: '#f8fafc',
+                colorAxis: {
+                    colors: ['#10b981', '#ef4444', '#f59e0b', '#8b5cf6', '#3b82f6', '#ec4899'], 
+                    minValue: 1,  maxValue: 6
+                },
+                legend: 'none',
+                tooltip: { isHtml: true, trigger: 'focus' },
+                region: typeof chartOptions !== 'undefined' ? chartOptions.region : 'world'
+            };
+
+            chart.draw(dataTable, chartOptions);
+        }
+
+        function changeRegion(regionCode, btnElement) {
+            chartOptions.region = regionCode;
+            chart.draw(dataTable, chartOptions);
+            document.querySelectorAll('.zoom-btn').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
+        }
+
+        function updatePanel(isoCode) {
+            const country = db[isoCode];
+            if (!country) return;
+
+            document.getElementById('placeholder').style.display = 'none';
+            const details = document.getElementById('country-details');
+            
+            details.style.display = 'none';
+            setTimeout(() => {
+                document.getElementById('c-flag').src = `https://flagcdn.com/w80/${isoCode.toLowerCase()}.png`;
+                document.getElementById('c-name').textContent = country.name;
+                
+                let sc = country.sachColor;
+                let sStyle = sc==1 ? 'color:#10b981;' : sc==2 ? 'color:#ef4444;' : sc==3 ? 'color:#f59e0b;' : sc==4 ? 'color:#8b5cf6;' : sc==5 ? 'color:#3b82f6;' : 'color:#ec4899;';
+                document.getElementById('c-sach-status').innerHTML = `<span style="${sStyle}">${country.sachLabel}</span>`;
+                document.getElementById('c-sach-obs').textContent = country.sachObs;
+
+                let snc = country.snusColor;
+                let snStyle = snc==1 ? 'color:#10b981;' : snc==2 ? 'color:#ef4444;' : snc==3 ? 'color:#f59e0b;' : snc==4 ? 'color:#8b5cf6;' : snc==5 ? 'color:#3b82f6;' : 'color:#ec4899;';
+                document.getElementById('c-snus-status').innerHTML = `<span style="${snStyle}">${country.snusLabel}</span>`;
+                document.getElementById('c-snus-obs').textContent = country.snusObs;
+
+                document.getElementById('c-vapes-status').textContent = country.vapes;
+                document.getElementById('c-vapes-obs').textContent = country.vapesObs;
+                document.getElementById('c-extra').textContent = country.extraInfo;
+
+                details.style.display = 'block';
+            }, 50);
+        }
+    </script>
+</body>
+</html>
